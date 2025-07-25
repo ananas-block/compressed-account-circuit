@@ -30,7 +30,7 @@ template TokenHash() {
     poseidon.inputs[1] <== owner;
     poseidon.inputs[2] <== amount;
     poseidon.inputs[3] <== delegate;
-    // poseidon.inputs[4] <== state;
+    // poseidon.inputs[4] <== state; is only hashed if frozen
     log(mint);
     log(owner);
     log(amount);

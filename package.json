@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "mocha test/token_hash.test.js",
-    "compile": "circom circuits/token_hash.circom --r1cs --wasm --sym"
+    "test:compressed": "mocha test/compressed_account.test.js",
+    "compile:token": "circom circuits/token_hash.circom --r1cs --wasm --sym",
+    "compile:compressed": "circom circuits/compressed_account.circom --r1cs --wasm --sym"
   },
   "dependencies": {
     "@lightprotocol/hasher.rs": "*",
