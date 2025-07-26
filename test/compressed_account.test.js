@@ -5,6 +5,11 @@ const circomlibjs = require("circomlibjs");
 const util = require("util");
 const exec = util.promisify(require("child_process").exec);
 
+// Helper function to convert byte array to BigInt field element
+function bytesToBigInt(bytes) {
+  return BigInt("0x" + Buffer.from(bytes).toString("hex"));
+}
+
 describe("CompressedAccount Circuit Test", function () {
   this.timeout(60000); // Increase timeout
 
@@ -16,42 +21,57 @@ describe("CompressedAccount Circuit Test", function () {
   });
 
   it("should correctly hash compressed account data with poseidon and test the circuit", async function () {
-    // Hardcoded input values from Rust test
-    const hardcodedInputs = [
-      "133964189369745375817643650762572252425757995588871671688134800968986291322", // owner_hashed
-      "1", // leaf_index
-      "274698893731942391252194363483372283063414035850745528064643496257815950661", // merkle_tree_hashed
-      "1", // discriminator
-      "3459342586129817037903285055794736781430278749885408056232073615594126477392", // data_hash
+    // CompressedAccount data from provided input
+    const dataHash = [
+      0, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
+      42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
     ];
-    const hardcodedHashInputs = [
-      "133964189369745375817643650762572252425757995588871671688134800968986291322", // owner_hashed
-      "1", // leaf_index
-      "274698893731942391252194363483372283063414035850745528064643496257815950661", // merkle_tree_hashed
-      "1", // discriminator
-      "3459342586129817037903285055794736781430278749885408056232073615594126477392", // data_hash
+    const discriminator = [1, 0, 0, 0, 0, 0, 0, 0];
+    const hashedOwner = [
+      0, 240, 209, 28, 82, 70, 103, 214, 246, 226, 83, 97, 137, 180, 113, 71,
+      46, 201, 52, 185, 158, 5, 253, 44, 32, 38, 56, 214, 68, 105, 0, 200,
+    ];
+    const hashedMerkleTree = [
+      0, 115, 209, 89, 76, 77, 207, 229, 229, 194, 80, 54, 250, 149, 132, 99,
+      87, 70, 93, 146, 224, 105, 149, 82, 88, 71, 4, 181, 90, 87, 182, 156,
+    ];
+    const leafIndex = 0;
+
+    // Convert byte arrays to BigInt field elements
+    const dataHashField = bytesToBigInt(dataHash);
+    const discriminatorField = bytesToBigInt(discriminator);
+    const hashedOwnerField = bytesToBigInt(hashedOwner);
+    const hashedMerkleTreeField = bytesToBigInt(hashedMerkleTree);
+    const leafIndexField = BigInt(leafIndex);
+
+    // Create input arrays for consistency with original structure
+    const inputFields = [
+      hashedOwnerField,
+      leafIndexField,
+      hashedMerkleTreeField,
+      discriminatorField,
+      dataHashField,
     ];
 
-    // Convert input strings to BigInt
-    const inputFields = hardcodedInputs.map((value) => BigInt(value));
-
-    // Log all the inputs
+    // Log all the inputs with their byte representations
     console.log("Compressed Account Test - Input Values:");
-    console.log("owner_hashed:", inputFields[0].toString());
-    console.log("leaf_index:", inputFields[1].toString());
-    console.log("merkle_tree_hashed:", inputFields[2].toString());
-    console.log("discriminator:", inputFields[3].toString());
-    console.log("data_hash:", inputFields[4].toString());
+    console.log("data_hash bytes:", dataHash);
+    console.log("data_hash field:", dataHashField.toString());
+    console.log("discriminator bytes:", discriminator);
+    console.log("discriminator field:", discriminatorField.toString());
+    console.log("hashed_owner bytes:", hashedOwner);
+    console.log("hashed_owner field:", hashedOwnerField.toString());
+    console.log("hashed_merkle_tree bytes:", hashedMerkleTree);
+    console.log("hashed_merkle_tree field:", hashedMerkleTreeField.toString());
+    console.log("leaf_index:", leafIndexField.toString());
 
     // Create circuit input
     const circuitInput = {
-      owner_hashed: inputFields[0].toString(),
-      leaf_index: inputFields[1].toString(),
-      merkle_tree_hashed: inputFields[2].toString(),
-      // lamports: inputFields[3].toString(),
-      discriminator: inputFields[4].toString(),
-      // has_data: inputFields[5].toString(),
-      data_hash: inputFields[6].toString(),
+      owner_hashed: hashedOwnerField.toString(),
+      leaf_index: leafIndexField.toString(),
+      merkle_tree_hashed: hashedMerkleTreeField.toString(),
+      discriminator: discriminatorField.toString(),
+      data_hash: dataHashField.toString(),
     };
 
     // Save input to file for reference
@@ -63,9 +83,16 @@ describe("CompressedAccount Circuit Test", function () {
     console.log("\nCircuit input saved to compressed_account_input.json");
 
     // Compute Poseidon hash manually with circomlibjs
-    const poseidonInputs = hardcodedHashInputs.map((x) =>
-      poseidon.F.e(x.toString()),
-    );
+    // Note: circuit adds domain separation to discriminator: discriminator + 36893488147419103232
+    const discriminatorDomain = 36893488147419103232n;
+    const poseidonInputs = [
+      hashedOwnerField,
+      leafIndexField,
+      hashedMerkleTreeField,
+      discriminatorField + discriminatorDomain, // Add domain separation like the circuit
+      dataHashField,
+    ].map((x) => poseidon.F.e(x.toString()));
+
     const manualHash = poseidon.F.toString(poseidon(poseidonInputs));
     console.log("\nPoseidon hash (computed manually):", manualHash);
 
@@ -102,7 +129,25 @@ describe("CompressedAccount Circuit Test", function () {
       console.log("Circuit output hash:", witnessJson[1]);
 
       // Compare with expected hash
-      // assert.strictEqual(witnessJson[1], manualHash, "Circuit output should match expected hash");
+      assert.strictEqual(
+        witnessJson[1],
+        manualHash,
+        "Circuit output should match expected hash",
+      );
+
+      // Also assert against the expected hash from CompressedAccount
+      const expectedHashBytes = [
+        27, 161, 167, 131, 154, 66, 146, 127, 231, 77, 51, 117, 90, 88, 219,
+        247, 27, 66, 249, 253, 215, 189, 3, 96, 100, 81, 185, 192, 172, 211,
+        198, 54,
+      ];
+      const expectedHashField = bytesToBigInt(expectedHashBytes);
+      assert.strictEqual(
+        witnessJson[1],
+        expectedHashField.toString(),
+        "Circuit output should match CompressedAccount hash",
+      );
+
       console.log("Circuit computed the correct hash!");
 
       // Provide hash in the format needed for the Rust test
