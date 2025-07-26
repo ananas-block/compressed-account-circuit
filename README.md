@@ -54,30 +54,6 @@ npm run test:circuit
   2. Use the circuit to compute the token hash
   3. Verify the output against the expected hash computed using the JavaScript Poseidon implementation
 
-## Test Values
+## Compressed Account Test Values
 
-The test generates the following values:
-
-- Original Mint Pubkey: `0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`
-- Hashed Mint: `0084fdaafea47c29fea7159d0daddd9c085d6200e1359e85bb81736af6b7c837`
-- Mint Field: `234974564384405454338400878224811014633568910695081077826838136014050412599`
-
-- Original Owner Pubkey: `fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210`
-- Hashed Owner: `002e4d6374b604562a5d8c04a4dfc035fa499ec7ad373bd48bd2bd62ca75c3b5`
-- Owner Field: `81809080774331860018275665161366441680881842191687855875890120042694951861`
-
-- Amount: `1000000`
-- Amount bytes: `00000000000000000000000000000000000000000000000000000000000f4240`
-- Amount Field: `1000000`
-
-- Original Delegate Pubkey: `aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899`
-- Hashed Delegate: `00216bdbddb256a9c661c2f6844cdba5ca81d1d9b4225153f0834c58d027fc8d`
-- Delegate Field: `59050367572494053109860423088265265986069532314379372217527226165667298445`
-
-- State: Frozen
-- State bytes: `0000000000000000000000000000000000000000000000000000000000000002`
-- State Field: `2`
-
-- Poseidon Hash Result: `5928395827810351341553386648434140975090063364054237590393532089755288768847`
-
-Each of these byte arrays is converted to a field element for circuit input.
+https://github.com/Lightprotocol/program-examples/blob/f593b2a226b8823261439eb22447e7f258339280/lowlevel/tests/test.rs#L55
